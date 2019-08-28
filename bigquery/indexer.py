@@ -154,7 +154,7 @@ def _rows_from_export(
                 continue
             yield json.loads(row)
         # Remove the blob now that we're finished loading it into the index.
-        blob.delete()
+        #blob.delete()
 
 
 # Sample and participant tables need to be indexed differently.
@@ -180,8 +180,12 @@ def _sample_scripts_by_id_from_export(storage_client, bucket_name,
                                       export_obj_prefix, table_name,
                                       participant_id_column, sample_id_column,
                                       sample_file_columns):
-    for row in _rows_from_export(storage_client, bucket_name,
-                                 export_obj_prefix):
+    logger.info('In sample_scripts function for table {}'.format(table_name))
+    rows = _rows_from_export(storage_client, bucket_name,
+                                 export_obj_prefix)
+    rows = [row for row in rows]
+    logger.info('Length of rows is {}'.format(len(rows)))
+    for row in rows:
         participant_id = row[participant_id_column]
         del row[participant_id_column]
         row = {
@@ -202,6 +206,7 @@ def _sample_scripts_by_id_from_export(storage_client, bucket_name,
                     row[has_name] = False
 
         script = UPDATE_SAMPLES_SCRIPT % (sample_id_column, sample_id_column)
+        #logger.info('WILLY, yielding this row in samples script: {}'.format(row))
         yield participant_id, {
             'source': script,
             'lang': 'painless',
@@ -233,6 +238,7 @@ def _tsv_scripts_by_id_from_export(storage_client, bucket_name,
                                    time_series_type):
     for row in _rows_from_export(storage_client, bucket_name,
                                  export_obj_prefix):
+        #logger.info('WILLY, about to yield this row: {}'.format(row))
         participant_id = row[participant_id_column]
         del row[participant_id_column]
         if time_series_column in row:
@@ -242,6 +248,50 @@ def _tsv_scripts_by_id_from_export(storage_client, bucket_name,
             tsv = _encode_tsv(None, time_series_type)
         row = {'%s.%s' % (table_name, k): v for k, v in row.iteritems()}
         script = UPDATE_TSV_SCRIPT
+        #logger.info('WILLY, yielding this TSV and ROW in script: {}, {}'.format(tsv, row))
+        yield participant_id, {
+            'source': script,
+            'lang': 'painless',
+            'params': {
+                'tsv': tsv,
+                'row': row
+            }
+        }
+
+def _foo_from_export(storage_client, bucket_name, export_obj_prefix, 
+    table_name, participant_id_column, sample_id_column, sample_file_columns, 
+    time_series_column, time_series_type):
+    rows = _rows_from_export(storage_client, bucket_name,
+                                 export_obj_prefix)
+    rows = [row for row in rows]
+    logger.info('Length of rows is {}'.format(len(rows)))
+    for row in rows:
+        participant_id = row[participant_id_column]
+        del row[participant_id_column]
+        if time_series_column in row:
+            tsv = _encode_tsv(row[time_series_column], time_series_type)
+            del row[time_series_column]
+        else:
+            tsv = _encode_tsv(None, time_series_type)
+        row = {
+            '%s.%s' % (table_name, k) if k != sample_id_column else k: v
+            for k, v in row.iteritems()
+        }
+
+        # Use the sample_file_columns configuration to add the internal
+        # '_has_<sample_file_type>' fields to the samples index.
+        for file_type, col in sample_file_columns.iteritems():
+            # Only mark as false if this sample file column is relevant to the
+            # table currently being indexed.
+            if table_name in col:
+                has_name = '_has_%s' % file_type.lower().replace(" ", "_")
+                if col in row and row[col]:
+                    row[has_name] = True
+                else:
+                    row[has_name] = False
+
+        script = UPDATE_TSV_SCRIPT
+        #logger.info('WILLY, yielding this row in script: {}'.format(row))
         yield participant_id, {
             'source': script,
             'lang': 'painless',
@@ -310,8 +360,18 @@ def index_table(es, bq_client, storage_client, index_name, table,
     # Wait up to 10 minutes for the resulting export files to be created.
     job.result(timeout=600)
     if sample_id_column in [f.name for f in table.schema]:
-        # Cannot have time series data for samples.
-        assert not time_series_vals
+        if time_series_vals:
+            if time_series_vals[0] == 'Unknown' and len(time_series_vals) == 1:
+                time_series_type = type(None)
+            elif '_' in ''.join(time_series_vals):
+                time_series_type = float
+            else:
+                time_series_type = int
+
+            scripts_by_id = _foo_from_export(storage_client, bucket_name, export_obj_prefix, table_name,
+            participant_id_column, sample_id_column, sample_file_columns, time_series_column, time_series_type)
+            indexer_util.bulk_index_scripts(es, index_name, scripts_by_id)
+        logger.info('calling sample scripts for table {}'.format(table_name))
         scripts_by_id = _sample_scripts_by_id_from_export(
             storage_client, bucket_name, export_obj_prefix, table_name,
             participant_id_column, sample_id_column, sample_file_columns)
@@ -342,7 +402,7 @@ def index_table(es, bq_client, storage_client, index_name, table,
 
 
 def index_fields(es, index_name, table, participant_id_column,
-                 sample_id_column):
+                 sample_id_column, sample_file_columns):
     table_name = _table_name_from_table(table)
     logger.info('Indexing %s into %s.' % (table_name, index_name))
 
@@ -385,8 +445,20 @@ def index_fields(es, index_name, table, participant_id_column,
 
     field_docs = _field_docs_by_id(id_prefix, '', fields,
                                    participant_id_column, sample_id_column)
+    field_docs = [field_doc for field_doc in field_docs]
     es.indices.put_mapping(doc_type='type', index=index_name, body=mappings)
     indexer_util.bulk_index_docs(es, index_name, field_docs)
+    if id_prefix.startswith('samples.'):
+        logger.info('WILLY we just indexed:')
+        logger.info(field_docs)
+        field_docs = [(_get_has_file_field_name(field_doc[0][len('samples.'):], sample_file_columns), {'name': _get_has_file_field_name(field_doc[0][len('samples.'):], sample_file_columns)}) for field_doc in field_docs]
+        field_docs = [field_doc for field_doc in field_docs if field_doc[0]]
+        #field_docs = [(u'_has_rna', u'_has_rna'), (u'_has_failed_rna_criteria_1', u'_has_failed_rna_criteria_1'), (u'_has_failed_rna_criteria_2', u'_has_failed_rna_criteria_2'), (u'_has_failed_rna_criteria_3', u'_has_failed_rna_criteria_3')]
+        logger.info('WILLY indexing these additional fields:')
+        logger.info(field_docs)
+        indexer_util.bulk_index_docs(es, index_name, field_docs)
+        index_fields(es, index_name, table, participant_id_column,
+                 'safafasfasfdasf', sample_file_columns)
 
 
 def _get_es_field_type(bq_type, bq_mode):
@@ -433,8 +505,8 @@ def _get_has_file_field_name(field_name, sample_file_columns):
     return ''
 
 
-def _add_field_to_mapping(properties, field_name, entry, time_series_vals):
-    if time_series_vals:
+def _add_field_to_mapping(properties, field_name, entry, time_series_vals, is_samples_table):
+    if time_series_vals and not is_samples_table:
         properties[field_name] = {
             'type': 'object',
             'properties': {tsv: entry
@@ -486,7 +558,7 @@ def create_mappings(es, index_name, table_name, fields, participant_id_column,
 
         es_field_type = _get_es_field_type(field.field_type, field.mode)
         entry = {}
-
+        #print('Willy field name and type {} {}'.format(field_name, es_field_type))
         if es_field_type == 'nested' or es_field_type == 'object':
             inner_mappings = create_mappings(es, index_name, field.fields,
                                              participant_id_column,
@@ -516,17 +588,25 @@ def create_mappings(es, index_name, table_name, fields, participant_id_column,
 
         if entry:
             _add_field_to_mapping(properties, field_name, entry,
-                                  time_series_vals)
+                                  time_series_vals, is_samples_table)
 
         has_field_name = _get_has_file_field_name(field_name,
                                                   sample_file_columns)
         if has_field_name:
             _add_field_to_mapping(properties, has_field_name,
-                                  {'type': 'boolean'}, time_series_vals)
+                                  {'type': 'boolean'}, time_series_vals, is_samples_table)
 
     # Default limit on total number of fields is too small for some datasets.
     es.indices.put_settings({"index.mapping.total_fields.limit": 100000})
+    #logger.info(index_name)
+    #logger.info(mappings)
     es.indices.put_mapping(doc_type='type', index=index_name, body=mappings)
+
+    if is_samples_table:
+        # We want to do this again, but as if it wasnt a sample table.
+        create_mappings(es, index_name, table_name, fields, participant_id_column,
+                    'bakjhbaskjhba', sample_file_columns, time_series_column,
+                    time_series_vals)
 
 
 def read_table(bq_client, table_name):
@@ -614,15 +694,19 @@ def main():
     sample_id_column = bigquery_config.get('sample_id_column', None)
     sample_file_columns = bigquery_config.get('sample_file_columns', {})
     time_series_column = bigquery_config.get('time_series_column', None)
+    exclude_from_time_series = bigquery_config.get('exclude_from_time_series', [])
     bq_client = bigquery.Client(project=deploy_project_id)
     storage_client = storage.Client(project=deploy_project_id)
 
     for table_name in bigquery_config['table_names']:
         table = read_table(bq_client, table_name)
-        time_series_vals = get_time_series_vals(bq_client, time_series_column,
-                                                table_name, table)
+        if table_name in exclude_from_time_series:
+            time_series_vals = []
+        else:
+            time_series_vals = get_time_series_vals(bq_client, time_series_column,
+                                                    table_name, table)
         index_fields(es, fields_index_name, table, participant_id_column,
-                     sample_id_column)
+                     sample_id_column, sample_file_columns)
         create_mappings(es, index_name, table_name, table.schema,
                         participant_id_column, sample_id_column,
                         sample_file_columns, time_series_column,
