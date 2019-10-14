@@ -588,6 +588,11 @@ def create_mappings(es, index_name, table_name, fields, participant_id_column,
             _add_field_to_mapping(properties, has_field_name,
                                   {'type': 'boolean'}, time_series_vals, is_samples_table)
 
+    has_names = ['_has_%s' % file_type.lower().replace(" ", "_") for file_type in sample_file_columns]
+    for has_name in has_names:
+        if 'tsv' not in has_name:
+            properties[has_name] = {'type': 'boolean'}
+
     # Default limit on total number of fields is too small for some datasets.
     es.indices.put_settings({"index.mapping.total_fields.limit": 100000})
     #logger.info(index_name)
@@ -700,15 +705,19 @@ def fix_samples_data_for_es(participant_docs, sample_file_columns):
     has_names = ['_has_%s' % file_type.lower().replace(" ", "_") for file_type in sample_file_columns]
     for participant_id in participant_docs:
         if 'samples' not in participant_docs[participant_id]:
-            #participant_docs[participant_id]['samples'] = {has_name: False for has_name in has_names}
+            participant_docs[participant_id]['samples'] = [{has_name: False for has_name in has_names}]
+            participant_docs[participant_id]['samples'][0]['sample_id'] = ''
             continue
         participant_docs[participant_id]['samples'] = [
             doc
             for doc in participant_docs[participant_id]['samples'].values()
         ]
-        # for has_name in has_names:
-        #     if has_name not in participant_docs[participant_id]['samples']:
-        #         participant_docs[participant_id]['samples'][has_name] = False
+        for has_name in has_names:
+            has_sample_type_or_file = False
+            for sample in participant_docs[participant_id]['samples']:
+                if has_name in sample:
+                    has_sample_type_or_file = True
+            participant_docs[participant_id][has_name] = has_sample_type_or_file
 
 def main():
     args = _parse_args()
