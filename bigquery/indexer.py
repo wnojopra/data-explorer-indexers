@@ -262,7 +262,7 @@ def _foo_from_export(storage_client, bucket_name, export_obj_prefix,
                 # Only mark as false if this sample file column is relevant to the
                 # table currently being indexed.
                 if table_name in col:
-                    has_name = '_has_%s' % file_type.lower().replace(" ", "_")
+                    has_name = '_has_tsv_%s' % file_type.lower().replace(" ", "_")
                     if col in row and row[col]:
                         row[has_name] = {tsv: True, '_is_time_series': True}
                     else:
@@ -279,7 +279,7 @@ def _foo_from_export(storage_client, bucket_name, export_obj_prefix,
                 # Only mark as false if this sample file column is relevant to the
                 # table currently being indexed.
                 if table_name in col:
-                    has_name = '_has_%s' % file_type.lower().replace(" ", "_")
+                    has_name = '_has_tsv_%s' % file_type.lower().replace(" ", "_")
                     if col in row and row[col]:
                         row[has_name] = True
                     else:
@@ -488,8 +488,10 @@ def _get_datetime_formatted_string(bq_type):
         return {'type': 'date'}
 
 
-def _get_has_file_field_name(field_name, sample_file_columns):
+def _get_has_file_field_name(field_name, sample_file_columns, sample_id_column):
     for file_type, col in sample_file_columns.iteritems():
+        if sample_id_column == 'hack' and field_name in col:
+            return '_has_tsv_%s' % file_type.lower().replace(" ", "_")
         if field_name in col:
             return '_has_%s' % file_type.lower().replace(" ", "_")
     return ''
@@ -581,7 +583,7 @@ def create_mappings(es, index_name, table_name, fields, participant_id_column,
                                   time_series_vals, is_samples_table)
 
         has_field_name = _get_has_file_field_name(field_name,
-                                                  sample_file_columns)
+                                                  sample_file_columns, sample_id_column)
         if has_field_name:
             _add_field_to_mapping(properties, has_field_name,
                                   {'type': 'boolean'}, time_series_vals, is_samples_table)
@@ -595,7 +597,7 @@ def create_mappings(es, index_name, table_name, fields, participant_id_column,
     if is_samples_table:
         # We want to do this again, but as if it wasnt a sample table.
         create_mappings(es, index_name, table_name, fields, participant_id_column,
-                    'bakjhbaskjhba', sample_file_columns, time_series_column,
+                    'hack', sample_file_columns, time_series_column,
                     time_series_vals)
 
 
@@ -662,7 +664,7 @@ def create_samples_json_export_file(es, storage_client, index_name,
     blob.upload_from_string(entities_json)
     logger.info('Wrote gs://%s/%s' % (bucket_name, samples_file_name))
 
-def fix_samples_data_for_es(participant_docs):
+def fix_samples_data_for_es(participant_docs, sample_file_columns):
     """
     Currently our samples are stored as a dictionary keyed by sample_ids:
     samples: {
@@ -694,13 +696,19 @@ def fix_samples_data_for_es(participant_docs):
     containing information on the same sample, we can look up the sample when
     indexing the second table.
     """
+    # Get a list of the 'has' columns
+    has_names = ['_has_%s' % file_type.lower().replace(" ", "_") for file_type in sample_file_columns]
     for participant_id in participant_docs:
         if 'samples' not in participant_docs[participant_id]:
+            #participant_docs[participant_id]['samples'] = {has_name: False for has_name in has_names}
             continue
         participant_docs[participant_id]['samples'] = [
             doc
             for doc in participant_docs[participant_id]['samples'].values()
         ]
+        # for has_name in has_names:
+        #     if has_name not in participant_docs[participant_id]['samples']:
+        #         participant_docs[participant_id]['samples'][has_name] = False
 
 def main():
     args = _parse_args()
@@ -753,7 +761,7 @@ def main():
         #            participant_id_column, sample_id_column,
         #            sample_file_columns, time_series_column, time_series_vals,
         #            deploy_project_id)
-    fix_samples_data_for_es(participant_docs)
+    fix_samples_data_for_es(participant_docs, sample_file_columns)
     indexer_util.bulk_index_docs(es, fields_index_name, field_docs)
     indexer_util.bulk_index_docs(es, index_name, participant_docs)
 
