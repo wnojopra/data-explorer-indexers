@@ -625,6 +625,8 @@ def create_samples_json_export_file(es, storage_client, index_name,
         index_name: Name of Elasticsearch index.
         deploy_project_id: Google Cloud Project ID containing the export samples bucket
     """
+    if not sample_id_column:
+        return
     entities = []
     search = Search(using=es, index=index_name)
     for hit in search.scan():
