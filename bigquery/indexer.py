@@ -709,6 +709,8 @@ def fix_samples_data_for_es(participant_docs, sample_file_columns):
         if 'samples' not in participant_docs[participant_id]:
             participant_docs[participant_id]['samples'] = [{has_name: False for has_name in has_names}]
             participant_docs[participant_id]['samples'][0]['sample_id'] = ''
+            for has_name in has_names:
+                participant_docs[participant_id][has_name] = False
             continue
         participant_docs[participant_id]['samples'] = [
             doc
