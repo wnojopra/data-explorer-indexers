@@ -263,10 +263,7 @@ def _foo_from_export(storage_client, bucket_name, export_obj_prefix,
                 # table currently being indexed.
                 if table_name in col:
                     has_name = '_has_tsv_%s' % file_type.lower().replace(" ", "_")
-                    if col in row and row[col]:
-                        row[has_name] = {tsv: True, '_is_time_series': True}
-                    else:
-                        row[has_name] = {tsv: False, '_is_time_series': True}
+                    row[has_name] = {tsv: True, '_is_time_series': True}
             participant_docs[participant_id] = row
         else:
             row = {
@@ -280,10 +277,7 @@ def _foo_from_export(storage_client, bucket_name, export_obj_prefix,
                 # table currently being indexed.
                 if table_name in col:
                     has_name = '_has_tsv_%s' % file_type.lower().replace(" ", "_")
-                    if col in row and row[col]:
-                        row[has_name] = True
-                    else:
-                        row[has_name] = False
+                    row[has_name] = True
             for k, v in row.iteritems():
                 if k not in participant_docs[participant_id]:
                     participant_docs[participant_id][k] = {'_is_time_series': True}
