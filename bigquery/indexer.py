@@ -337,82 +337,82 @@ def _create_table_from_view(bq_client, view):
 def add_table_to_participant_docs(es, bq_client, storage_client, index_name, table,
                 participant_id_column, sample_id_column, sample_file_columns,
                 time_series_column, time_series_vals, deploy_project_id, participant_docs, rsids):
-    table_name = _table_name_from_table(table)
-    for i in range(5000):
-        pid = 'pid{}'.format(i)
-        row = {}
-        for rsid in rsids: #About 9900 rsids
-            genotype = random.choice(['unknown', 'heterozygous', 'homozygous-ref', 'homozygous-alt'])
-            row['%s.%s' % (table_name, rsid)] = genotype
-        participant_docs[pid] = row
-    return participant_docs
     # table_name = _table_name_from_table(table)
-    # bucket_name = '%s-table-export' % deploy_project_id
-    # table_export_bucket = storage_client.lookup_bucket(bucket_name)
-    # if not table_export_bucket:
-    #     table_export_bucket = storage_client.create_bucket(bucket_name)
-
-    # unique_id = str(uuid.uuid4())
-    # export_obj_prefix = 'export-%s' % unique_id
-    # job_config = bigquery.job.ExtractJobConfig()
-    # job_config.destination_format = (
-    #     bigquery.DestinationFormat.NEWLINE_DELIMITED_JSON)
-    # logger.info('Running extract table job for: %s' % table_name)
-
-    # table_is_view = table.table_type == 'VIEW'
-    # if table_is_view:
-    #     # BigQuery cannot export data from a view. So as a workaround,
-    #     # create a table from the view and use that instead.
-    #     logger.info('%s is a view, attempting to create new table' %
-    #                 table_name)
-    #     table = _create_table_from_view(bq_client, table)
-
-    # job = bq_client.extract_table(
-    #     table,
-    #     # The '*'' enables file sharding, which is required for larger datasets.
-    #     'gs://%s/%s*.json' % (bucket_name, export_obj_prefix),
-    #     job_id=unique_id,
-    #     job_config=job_config)
-    # # Wait up to 10 minutes for the resulting export files to be created.
-    # job.result(timeout=600)
-    # if sample_id_column in [f.name for f in table.schema]:
-    #     if time_series_vals:
-    #         if time_series_vals[0] == 'Unknown' and len(time_series_vals) == 1:
-    #             time_series_type = type(None)
-    #         elif '_' in ''.join(time_series_vals):
-    #             time_series_type = float
-    #         else:
-    #             time_series_type = int
-
-    #         participant_docs = _foo_from_export(storage_client, bucket_name, export_obj_prefix, table_name, 
-    #             participant_id_column, sample_id_column, sample_file_columns, time_series_column, time_series_type, participant_docs)
-
-    #     participant_docs = _add_sample_table_to_participant_docs(
-    #         storage_client, bucket_name, export_obj_prefix, table_name,
-    #         participant_id_column, sample_id_column, sample_file_columns, participant_docs)
-    # elif time_series_vals:
-    #     assert time_series_column in [f.name for f in table.schema]
-    #     if time_series_vals[0] == 'Unknown' and len(time_series_vals) == 1:
-    #         time_series_type = type(None)
-    #     elif '_' in ''.join(time_series_vals):
-    #         time_series_type = float
-    #     else:
-    #         time_series_type = int
-    #     participant_docs = add_tsv_table_to_participant_docs(
-    #         storage_client, bucket_name, export_obj_prefix, table_name,
-    #         participant_id_column, time_series_column, time_series_type, participant_docs)
-    # else:
-    #     participant_docs = _add_participant_table_to_participant_docs(storage_client, bucket_name,
-    #                                          export_obj_prefix, table_name,
-    #                                          participant_id_column, participant_docs)
-
-    # if table_is_view:
-    #     # Delete the temporary copy table we created
-    #     bq_client.delete_table(table)
-    #     logger.info('Deleted temporary copy table %s' %
-    #                 _table_name_from_table(table))
-
+    # for i in range(5000):
+    #     pid = 'pid{}'.format(i)
+    #     row = {}
+    #     for rsid in rsids: #About 9900 rsids
+    #         genotype = random.choice(['unknown', 'heterozygous', 'homozygous-ref', 'homozygous-alt'])
+    #         row['%s.%s' % (table_name, rsid)] = genotype
+    #     participant_docs[pid] = row
     # return participant_docs
+    table_name = _table_name_from_table(table)
+    bucket_name = '%s-table-export' % deploy_project_id
+    table_export_bucket = storage_client.lookup_bucket(bucket_name)
+    if not table_export_bucket:
+        table_export_bucket = storage_client.create_bucket(bucket_name)
+
+    unique_id = str(uuid.uuid4())
+    export_obj_prefix = 'export-%s' % unique_id
+    job_config = bigquery.job.ExtractJobConfig()
+    job_config.destination_format = (
+        bigquery.DestinationFormat.NEWLINE_DELIMITED_JSON)
+    logger.info('Running extract table job for: %s' % table_name)
+
+    table_is_view = table.table_type == 'VIEW'
+    if table_is_view:
+        # BigQuery cannot export data from a view. So as a workaround,
+        # create a table from the view and use that instead.
+        logger.info('%s is a view, attempting to create new table' %
+                    table_name)
+        table = _create_table_from_view(bq_client, table)
+
+    job = bq_client.extract_table(
+        table,
+        # The '*'' enables file sharding, which is required for larger datasets.
+        'gs://%s/%s*.json' % (bucket_name, export_obj_prefix),
+        job_id=unique_id,
+        job_config=job_config)
+    # Wait up to 10 minutes for the resulting export files to be created.
+    job.result(timeout=600)
+    if sample_id_column in [f.name for f in table.schema]:
+        if time_series_vals:
+            if time_series_vals[0] == 'Unknown' and len(time_series_vals) == 1:
+                time_series_type = type(None)
+            elif '_' in ''.join(time_series_vals):
+                time_series_type = float
+            else:
+                time_series_type = int
+
+            participant_docs = _foo_from_export(storage_client, bucket_name, export_obj_prefix, table_name, 
+                participant_id_column, sample_id_column, sample_file_columns, time_series_column, time_series_type, participant_docs)
+
+        participant_docs = _add_sample_table_to_participant_docs(
+            storage_client, bucket_name, export_obj_prefix, table_name,
+            participant_id_column, sample_id_column, sample_file_columns, participant_docs)
+    elif time_series_vals:
+        assert time_series_column in [f.name for f in table.schema]
+        if time_series_vals[0] == 'Unknown' and len(time_series_vals) == 1:
+            time_series_type = type(None)
+        elif '_' in ''.join(time_series_vals):
+            time_series_type = float
+        else:
+            time_series_type = int
+        participant_docs = add_tsv_table_to_participant_docs(
+            storage_client, bucket_name, export_obj_prefix, table_name,
+            participant_id_column, time_series_column, time_series_type, participant_docs)
+    else:
+        participant_docs = _add_participant_table_to_participant_docs(storage_client, bucket_name,
+                                             export_obj_prefix, table_name,
+                                             participant_id_column, participant_docs)
+
+    if table_is_view:
+        # Delete the temporary copy table we created
+        bq_client.delete_table(table)
+        logger.info('Deleted temporary copy table %s' %
+                    _table_name_from_table(table))
+
+    return participant_docs
 
 
 def add_table_to_field_docs(es, index_name, table, participant_id_column,
@@ -458,8 +458,8 @@ def add_table_to_field_docs(es, index_name, table, participant_id_column,
     }
 
     _update_fields_docs(id_prefix, '', fields, participant_id_column, sample_id_column, field_docs)
-    for rs_id in rsids:
-        field_docs['{}.{}.{}.{}'.format('ukb-itt-demo-data', 'application_42992', 'synthetic_genotypes', rs_id)] = {'name': rs_id}
+    #for rs_id in rsids:
+    #    field_docs['{}.{}.{}.{}'.format('ukb-itt-demo-data', 'application_42992', 'synthetic_genotypes', rs_id)] = {'name': rs_id}
     #field_docs = _field_docs_by_id(id_prefix, '', fields,
     #                               participant_id_column, sample_id_column)
     #field_docs = [field_doc for field_doc in field_docs]
@@ -658,17 +658,17 @@ def create_mappings(es, index_name, table_name, fields, participant_id_column,
         if 'tsv' not in has_name:
             properties[has_name] = {'type': 'boolean'}
 
-    for rs_id in rsids:
-        properties['{}.{}.{}.{}'.format('ukb-itt-demo-data', 'application_42992', 'synthetic_genotypes', rs_id)] = {
-                'type': 'text',
-                'analyzer': 'simple',
-                'fields': {
-                    'keyword': {
-                        'type': 'keyword',
-                        'ignore_above': 256
-                    }
-                }
-            }
+    # for rs_id in rsids:
+    #     properties['{}.{}.{}.{}'.format('ukb-itt-demo-data', 'application_42992', 'synthetic_genotypes', rs_id)] = {
+    #             'type': 'text',
+    #             'analyzer': 'simple',
+    #             'fields': {
+    #                 'keyword': {
+    #                     'type': 'keyword',
+    #                     'ignore_above': 256
+    #                 }
+    #             }
+    #         }
 
     # Default limit on total number of fields is too small for some datasets.
     es.indices.put_settings({"index.mapping.total_fields.limit": 1000000})
@@ -827,7 +827,8 @@ def main():
 
     participant_docs = {}
     field_docs = {}
-    rsids = _get_all_rsids()
+    #rsids = _get_all_rsids()
+    rsids = []
     for table_name in bigquery_config['table_names']:
         table = read_table(bq_client, table_name)
         if table_name in exclude_from_time_series:
