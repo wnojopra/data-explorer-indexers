@@ -38,7 +38,7 @@ spec:
               topologyKey: kubernetes.io/hostname
       initContainers:
       - name: init-sysctl
-        image: busybox:1.27.2
+        image: gcr.io/ukb-itt-data-explorer-test/busybox:1.27.2
         command:
         - sysctl
         - -w
@@ -47,7 +47,7 @@ spec:
           privileged: true
       containers:
       - name: es-master
-        image: quay.io/pires/docker-elasticsearch-kubernetes:6.2.4
+        image: gcr.io/ukb-itt-data-explorer-test/docker-elasticsearch-kubernetes:6.2.4
         env:
         - name: NAMESPACE
           valueFrom:
