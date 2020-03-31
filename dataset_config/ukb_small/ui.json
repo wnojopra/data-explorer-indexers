@@ -8,33 +8,8 @@
     },
     {
       "ui_facet_name": "Year of birth",
-      "ui_facet_description": "Field 33",
-      "elasticsearch_field_name": "ukb-itt-demo-data.demo_views.single_instance_phenotypes.f_33_Date_of_birth"
-    },
-    {
-      "ui_facet_name": "Number of medical records",
-      "ui_facet_description": "",
-      "elasticsearch_field_name": "ukb-itt-demo-data.demo_views.medical_records_count.participant_record_count"
-    },
-    {
-      "ui_facet_name": "Year of attending assessment centre",
-      "ui_facet_description": "Field 53",
-      "elasticsearch_field_name": "ukb-itt-demo-data.demo_views.multi_instance_phenotypes.f_53_Date_of_attending_assessment_centre"
-    },
-    {
-      "ui_facet_name": "UK Biobank assessment centre",
-      "ui_facet_description": "Field 54",
-      "elasticsearch_field_name": "ukb-itt-demo-data.demo_views.multi_instance_phenotypes.f_54_UK_Biobank_assessment_centre"
-    },
-    {
-      "ui_facet_name": "Systolic blood pressure, manual reading",
-      "ui_facet_description": "Field 93",
-      "elasticsearch_field_name": "ukb-itt-demo-data.demo_views.array_phenotypes.f_93_Systolic_blood_pressure_manual_reading_mmHg"
-    },
-    {
-      "ui_facet_name": "Diastolic blood pressure, manual reading",
-      "ui_facet_description": "Field 94",
-      "elasticsearch_field_name": "ukb-itt-demo-data.demo_views.array_phenotypes.f_94_Diastolic_blood_pressure_manual_reading_mmHg"
+      "ui_facet_description": "Field 34",
+      "elasticsearch_field_name": "ukb-itt-demo-data.demo_views.single_instance_phenotypes.f_34_Year_of_birth_years"
     }
   ]
 }

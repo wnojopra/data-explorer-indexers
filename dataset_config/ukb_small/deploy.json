@@ -1,5 +1,5 @@
 {
   "project_id": "ukb-itt-data-explorer-test",
-  "node_pool_machine_type": "n1-highmem-64",
-  "node_pool_num_nodes": "5"
+  "node_pool_machine_type": "n1-highmem-8",
+  "node_pool_num_nodes": "50"
 }
