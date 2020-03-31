@@ -113,7 +113,8 @@ def maybe_create_elasticsearch_index(es, elasticsearch_url, index_name):
             body={
                 'settings': {
                     # Default of 1000 fields is not enough for some datasets
-                    'index.mapping.total_fields.limit': 15000,
+                    'index.mapping.total_fields.limit': 1000000,
+                    'index.number_of_shards': 100,
                 },
             })
 
@@ -122,7 +123,7 @@ def _prepare_for_indexing(es):
     # Temporarily Update the settings to temporarily optimize for write-heavy performance.
     es.indices.put_settings({
         'index.refresh_interval': '-1',
-        'index.number_of_replicas': 0,
+        'index.number_of_replicas': 0
     })
 
 
@@ -149,5 +150,5 @@ def bulk_index_docs(es, index_name, docs_by_id):
 
     _prepare_for_indexing(es)
     # For large datasets, the default timeout of 10s is sometimes not enough.
-    bulk(es, es_actions(docs_by_id), request_timeout=300)
+    bulk(es, es_actions(docs_by_id), request_timeout=1800)
     _complete_indexing(es)

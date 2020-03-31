@@ -13,7 +13,8 @@ spec:
       component: elasticsearch
       role: data
   serviceName: elasticsearch-data
-  replicas: 3
+  podManagementPolicy: "Parallel"
+  replicas: 50
   template:
     metadata:
       labels:
@@ -66,7 +67,7 @@ spec:
         - name: HTTP_ENABLE
           value: "true"
         - name: ES_JAVA_OPTS
-          value: -Xms2g -Xmx2g
+          value: -Xms20000m -Xmx20000m
         - name: NETWORK_HOST
           value: _site_,_lo_
         - name: PROCESSORS
@@ -75,9 +76,11 @@ spec:
               resource: limits.cpu
         resources:
           requests:
-            cpu: 2
+            cpu: 7
+            memory: "40Gi"
           limits:
-            cpu: 3
+            cpu: 7
+            memory: "45Gi"
         ports:
         - containerPort: 9200
           name: http
@@ -101,8 +104,8 @@ spec:
   - metadata:
       name: storage
     spec:
-      storageClassName: faster
+      storageClassName: standard
       accessModes: [ ReadWriteOnce ]
       resources:
         requests:
-          storage: 2000Gi
+          storage: 12Gi
