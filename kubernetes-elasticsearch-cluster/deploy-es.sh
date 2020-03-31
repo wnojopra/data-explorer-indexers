@@ -77,11 +77,11 @@ kubectl delete -f es-svc.yaml || true
 # pods are in "Pods have warnings" state.
 
 
-# kubectl delete -f es-data-svc.yaml || true
-# kubectl delete -f es-data-stateful-deploy.yaml || true
-# kubectl delete -f es-data-pdb.yaml || true
-# kubectl delete -f es-master-svc.yaml || true
-# kubectl delete -f es-master-stateful.yaml || true
+kubectl delete -f es-data-svc.yaml || true
+kubectl delete -f es-data-stateful-deploy.yaml || true
+kubectl delete -f es-data-pdb.yaml || true
+kubectl delete -f es-master-svc.yaml || true
+kubectl delete -f es-master-stateful.yaml || true
 
 
 
