@@ -15,11 +15,9 @@ spec:
         imagePullPolicy: Always
         resources:
           requests:
-            memory: "80Gi"
             cpu: 7
           limits: 
-            memory: "90Gi"
-            cpu: 15
+            cpu: 7
         volumeMounts:
         - name: dataset-config
           mountPath: /app/dataset_config
