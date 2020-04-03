@@ -4,12 +4,12 @@
     {
       "ui_facet_name": "Sex",
       "ui_facet_description": "Field 31",
-      "elasticsearch_field_name": "ukb-itt-demo-data.demo_views.single_instance_phenotypes.f_31_Sex"
+      "elasticsearch_field_name": "ukb-itt-demo-data.application_42992.single_instance_phenotypes.f_31_Sex"
     },
     {
       "ui_facet_name": "Year of birth",
       "ui_facet_description": "Field 34",
-      "elasticsearch_field_name": "ukb-itt-demo-data.demo_views.single_instance_phenotypes.f_34_Year_of_birth_years"
+      "elasticsearch_field_name": "ukb-itt-demo-data.application_42992.single_instance_phenotypes.f_34_Year_of_birth_years"
     }
   ]
 }
