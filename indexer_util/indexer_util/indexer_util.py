@@ -114,7 +114,7 @@ def maybe_create_elasticsearch_index(es, elasticsearch_url, index_name):
                 'settings': {
                     # Default of 1000 fields is not enough for some datasets
                     'index.mapping.total_fields.limit': 1000000,
-                    'index.number_of_shards': 50,
+                    'index.number_of_shards': 200,
                 },
             })
 
