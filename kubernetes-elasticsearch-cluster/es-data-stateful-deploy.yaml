@@ -14,7 +14,7 @@ spec:
       role: data
   serviceName: elasticsearch-data
   podManagementPolicy: "Parallel"
-  replicas: 100
+  replicas: 200
   template:
     metadata:
       labels:
