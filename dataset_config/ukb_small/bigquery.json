@@ -3,6 +3,6 @@
   "time_series_column":"instanceId",
   "time_series_unit":"Instance",
   "table_names": [
-    "ukb-itt-demo-data.application_42992.single_instance_phenotypes"
+    "ukb-itt-demo-data.application_11.single_instance_phenotypes_20200316"
   ]
 }

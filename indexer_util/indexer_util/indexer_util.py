@@ -6,6 +6,7 @@ import logging
 import os
 import time
 
+from multiprocessing import Pool, TimeoutError
 from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import ConnectionError
 from elasticsearch.helpers import bulk
@@ -132,6 +133,47 @@ def _complete_indexing(es):
         'index.refresh_interval': '1s',
         'index.number_of_replicas': 1,
     })
+
+def split_dict_equally(input_dict, chunks=20):
+    "Splits dict by keys. Returns a list of dictionaries."
+    # prep with empty dicts
+    return_list = [dict() for idx in xrange(chunks)]
+    idx = 0
+    for k in input_dict.keys():
+        return_list[idx][k] = input_dict[k]
+        if idx < chunks-1:  # indexes start at 0
+            idx += 1
+        else:
+            idx = 0
+        del input_dict[k]
+    return return_list
+
+def bulk_index_docs_in_parallel(elasticsearch_ip, index_name, docs_by_id):
+    num_threads = 100
+    pool = Pool(processes=num_threads)
+    dicts = split_dict_equally(docs_by_id, chunks=num_threads)
+    results = []
+    for d in dicts:
+        #print(d)
+        results.append(pool.apply_async(bulk_index_docs_in_parallel_helper, (elasticsearch_ip, index_name, d)))
+    for res in results:
+        res.get(timeout=600)
+
+def bulk_index_docs_in_parallel_helper(elasticsearch_ip, index_name, docs_by_id):
+    es = Elasticsearch(elasticsearch_ip)
+    def es_actions(docs_by_id):
+        for _id, doc in docs_by_id.iteritems():
+            yield ({
+                '_op_type': 'create',
+                '_index': index_name,
+                # type will go away in future versions of Elasticsearch. Just
+                # use any string here.
+                '_type': 'type',
+                '_id': _id,
+                '_source': doc,
+            })
+    bulk(es, es_actions(docs_by_id), chunk_size=600000, request_timeout=1800)
+
 
 def bulk_index_docs(es, index_name, docs_by_id):
     # docs_by_id is a dict containing documents to be indexed into Elasticsearch.
